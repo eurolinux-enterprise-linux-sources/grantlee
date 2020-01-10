@@ -1,0 +1,355 @@
+namespace Grantlee
+{
+
+/**
+
+  @page for_themers Grantlee for theme artists.
+
+  The syntax of %Grantlee templates is the same as Django templates. This page is an introduction to the syntax, but any Django template introduction is also relevant. Here's some good ones:
+
+  - http://www.djangobook.com/en/2.0/chapter04/
+  - http://www.djangobook.com/en/2.0/chapter09/
+  - http://docs.djangoproject.com/en/dev/topics/templates/
+
+
+  @section template_syntax Syntax of Grantlee templates
+
+  The syntax of %Grantlee templates contains four types of tokens- plain text, comments, variables and control tags.
+
+  A simple template might look like this:
+  @verbatim
+    {# My simple Template #}
+
+    Hello {{ person.name }},
+
+    {% if person.hasBirthday %}
+    Happy Birthday!
+    {% else %}
+    Have a nice day!
+    {% endif %}
+
+    Bye,
+
+    {{ myname }}
+  @endverbatim
+
+  - Content inside <tt>{# #}</tt> are comments and are not part of the output.
+  - Content inside <tt>{{ }}</tt> are variables which are substitued when the template is rendered.
+  - Content inside <tt>{% %}</tt> are control tags which can affect the rendering of the template. %Grantlee ships with commonly used tags such as @gr_tag{if}, @gr_tag{for}, @gr_tag{cycle} and a host of others (see&nbsp;http://docs.djangoproject.com/en/dev/ref/templates/builtins/). It is also possible for application developers and artists to define their own tags.
+
+
+  @subsection loops Loops
+  The type of a variable determines how it can be used in templates. For example, treatment of items in an iterable context works as follows.
+
+  Lists work as expected:
+  @verbatim
+    <h2>A few of my favourite things</h2>
+    <ul>
+    {% for item in mylist %}
+    <li> {{ item }}
+    {% endfor %}
+    </ul>
+  @endverbatim
+
+  If an int or double is used in a loop, it is treated as a list containing one item. That is, this
+
+  @verbatim
+    {% for item in myint %}
+    <li> {{ item }}
+    {% endfor %}
+  @endverbatim
+
+  would be rendered as
+  @verbatim
+    <li> 6
+  @endverbatim
+
+  if myint is 6 in the context.
+
+  @subsection truthiness Truthiness
+
+  Truthiness of a variable is evaulated in a similar way to python. That is,
+
+  - The invalid QVariant is false
+  - An empty QString is false
+  - 0 is false
+  - An empty QVariantList is false
+  - An empty QVariantHash is false
+  - Boolean false is false
+  - QObjects that define their own truth behaviour and return false are false.
+
+  Everything else is true.
+
+  @verbatim
+    {% if mylist %}
+    <ul>
+    {% for item in mylist %}
+    <li> {{ item }}
+    {% endfor %}
+    </ul>
+    {% endif %}
+  @endverbatim
+
+  @subsection lookups Variable lookups
+
+  So far we've mostly used simple variable lookups in @gr_var{variable} tags, but the template system is capable of a lot more. Complex structures can be evaluated using the dot ('.') character.
+
+  The dot can be used for list index lookup (Note that list lookup is 0-indexed.):
+  @verbatim
+    The first item is {{ mylist.0 }}, and the fifth item is {{ mylist.4 }}.
+  @endverbatim
+
+  It can also be used for QVariantHash key lookup:
+
+  @verbatim
+    The hash value is {{ myhash.mykey }}.
+  @endverbatim
+
+  And it can retrieve properties from QObjects:
+
+  @verbatim
+    The object property is {{ myobj.myprop }}.
+  @endverbatim
+
+  @subsection filters Filters
+
+  Filters can further affect the result of including a variable in a template. Filters are separated by the pipe ('|') character.
+
+  @verbatim
+    Name is {{ name }}, and name in uppercase is {{ name|upper }}.
+
+    // rendered as
+    // Name is Alice, and name in uppercase is ALICE.
+  @endverbatim
+
+  Note that filters may be combined with dot-lookup. For example, if people is a list of Person objects, and Person objects have name properties:
+
+  @verbatim
+    First persons name: {{ people.0.name|upper }}.
+
+    // rendered as
+    // First persons name: BOB.
+  @endverbatim
+
+  Filters may also be chained. Here, 'Claire' is first uppercased, then lowercased:
+
+  @verbatim
+    Name is {{ name|upper|lower }}
+
+    // rendered as
+    // First persons name: claire.
+  @endverbatim
+
+  Filters may take one string argument, which is delimited by a colon (':').
+
+  If peoplestring contains "Dave and Ellen and Frank", we can cut the string 'and '
+
+  @verbatim
+    The people are {{ peoplestring|cut:"and " }}
+
+    // rendered as
+    // The people are Dave Ellen Frank.
+  @endverbatim
+
+  %Grantlee ships with many useful filters including upper, lower, slice, truncate, join, split etc (see&nbsp;http://docs.djangoproject.com/en/dev/ref/templates/builtins/). Application developers and artists can also define their own filters.
+
+  @subsection template_loading Template Inclusion and Inheritance
+
+  It is possible for templates to include other templates in two ways, by directly including the content of another template, and by extending another template.
+
+  @subsubsection template_including
+
+  The @gr_tag{include} tag is used to include the content of another template.
+
+  @verbatim
+    <h1>My page</h1>
+      {% include "breadcrumbs.html" %}
+
+    <h2>My Data</h2>
+      {% include "table.html" %}
+  @endverbatim
+
+  If "breadcrumbs.html" and "table.html" exist and contain appropriate content, they will be rendered and added to the output of the template.
+
+  @subsubsection template_extending
+
+  The @gr_tag{extends} tag is used to include and override the content of another template.
+
+  The template being extended must define several blocks using the @gr_tag{block} tag. Typically, one or more base templates will be defined which define the structure and content of all templates, and some placeholders for other templates to fill in.
+
+  For example, a <tt>base.html</tt> might look like this:
+
+  @verbatim
+    <html>
+      <head>
+        <title>{% block title %}My Stuff{% endblock %}</title>
+      </head>
+      <body>
+        <div class="sidebar">
+          {% block sidebar %}
+          {% endblock sidebar %}
+        </div>
+        <div class="main_content">
+          {% block content %}
+          {% endblock content %}
+        </div>
+      </body>
+    </html>
+  @endverbatim
+
+  Then other templates could be written which extend this template, reusing its content and replacing the content of the @gr_tag{block} tags.
+
+  For example, a page about books:
+
+  @verbatim
+    {% extends "base.html" %}
+    {% block title %}{{ block.super }} - My Books{% endblock %}
+
+    {% block content %}
+    <ul>
+      {% for book in books %}
+        <li>{{ book.name }}, {{ book.author }}
+      {% endfor %}
+    </ul>
+    {% endblock %}
+  @endverbatim
+
+  Or a page about DVDs:
+
+  @verbatim
+    {% extends "base.html" %}
+    {% block title %}{{ block.super }} - My DVDs{% endblock %}
+
+    {% block content %}
+    <ul>
+      {% for dvd in dvds %}
+        <li>{{ dvd.title }}, {{ dvd.director }}
+      {% endfor %}
+    </ul>
+    {% endblock content %}
+  @endverbatim
+
+  Note that it is optional to override a @gr_tag{block} in a extended template. It is also optional to repeat the name of the block in its corresponding @gr_tag{endblock} tag.
+
+  The content of an overriden tag is available in the @gr_var{block.super} variable, and can be reused where appropriate. In the above examples, the use of @gr_var{block.super} results in the titles of the rendered pages being <tt>"My Stuff - My Books"</tt>, and <tt>"My Stuff - My DVDs"</tt> respectively.
+
+  @section templates_safestring Autoescaping in templates.
+
+  When creating HTML string output it is necessary to consider escaping data inserted into the template. HTML escaping involves replacing '&lt;' with '&amp;lt;' and '&amp;' with '&amp;amp;' etc. %Grantlee automatically escapes string input before adding it to the output.
+
+  This is relevant when writing a variable from the context into the Template.
+
+  If the context object <tt>companies</tt> is a list containing ('Burger King', 'Ben &amp; Jerries', 'Ford'), and it is used in a template such as:
+
+  @verbatim
+    <ul>
+    {% for company in companies %}
+      <li> {{ company }}
+    {% endfor %}
+    </ul>
+  @endverbatim
+
+  The output would be
+
+  @verbatim
+    <ul>
+      <li> Burger King
+      <li> Ben &amp; Jerries
+      <li> Ford
+    </ul>
+  @endverbatim
+
+  Notice that the '&amp;' has been replaced with '&amp;amp;', as is appropriate for html output.
+
+  Sometimes however, a variable will contain text which has already been escaped and does not need to be escaped again. For example,
+  if we already created a <tt>table</tt> in the context containing the content:
+
+  @verbatim
+    <table class="myclass">
+      <tr><th> Company </th><th> Product </th></tr>
+      <tr><td> Burger King </td><td> Fast Food </td></tr>
+      <tr><td> Ben &amp; Jerries </td><td> Icecream </td></tr>
+      <tr><td> Ford </td><td> Cars </td></tr>
+    </table>
+  @endverbatim
+
+  and a template with the content:
+
+  @verbatim
+    <h2> Table of companies </h2>
+
+    {{ table }}
+
+    As you can see in the table...
+  @endverbatim
+
+  the content would not be rendered properly because it would be escaped.
+
+  @verbatim
+    <h2> Table of companies </h2>
+
+    &lt;table class=&quot;myclass&quot;&gt;
+      &lt;tr&gt;&lt;th&gt; Company &lt;/th&gt;&lt;th&gt; Product &lt;/th&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt; Burger King &lt;/td&gt;&lt;td&gt; Fast Food &lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt; Ben &amp;amp; Jerries &lt;/td&gt;&lt;td&gt; Icecream &lt;/td&gt;&lt;/tr&gt;
+      &lt;tr&gt;&lt;td&gt; Ford &lt;/td&gt;&lt;td&gt; Cars &lt;/td&gt;&lt;/tr&gt;
+    &lt;/table&gt;
+
+    As you can see in the table...
+  @endverbatim
+
+  Note that the content of <tt>table</tt> has already been escaped. That is 'Ben &amp;amp; Jerries' is already used instead of 'Ben &amp; Jerries'. If a variable has already been escaped and should not be escaped again, it can be marked as safe from further escaping using the <tt>safe</tt> filter.
+
+  @verbatim
+    <h2> Table of companies </h2>
+
+    {{ table|safe }}
+
+    As you can see in the table...
+  @endverbatim
+
+  Resulting in:
+
+  @verbatim
+    <h2> Table of companies </h2>
+
+    <table class="myclass">
+      <tr><th> Company </th><th> Product </th></tr>
+      <tr><td> Burger King </td><td> Fast Food </td></tr>
+      <tr><td> Ben &amp; Jerries </td><td> Icecream </td></tr>
+      <tr><td> Ford </td><td> Cars </td></tr>
+    </table>
+
+    As you can see in the table...
+  @endverbatim
+
+  It is also possible to turn this autoescaping feature off for a block in a template.
+
+  For example:
+
+  @verbatim
+    <h2> Some pre-prepared safe data </h2>
+
+    {% autoescape off %}
+      {{ table }}
+      As you can see in the table...
+
+      {% for list in lists %}
+        {{ list }}
+      {% endfor %}
+
+      {{ paragraph_data }}
+    {% endautoescape %}
+  @endverbatim
+
+  would not escape the content between the autoescape and endautoescape tags. This should only be used for content which is actually already safe.
+
+  @see http://docs.djangoproject.com/en/1.1/topics/templates/#for-individual-variables
+
+  @subsection extending_syntax Extending the syntax
+
+  It is also possible to extend the syntax of Granltee as you need it using javascript if the application developer chooses. See @ref qtscript_libraries for more. This is considered an advanced topic.
+
+*/
+
+}
